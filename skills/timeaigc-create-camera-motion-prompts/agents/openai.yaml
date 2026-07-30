@@ -1,0 +1,5 @@
+interface:
+  display_name: "TimeAIGC_动态运镜提示词"
+  short_description: "从单图、首尾帧或文字场景生成兼容且可执行的中文运镜方案"
+  default_prompt: "使用 $timeaigc-create-camera-motion-prompts 根据我的图片、首尾帧或场景描述，生成三种可执行的中文运镜提示词。"
+
