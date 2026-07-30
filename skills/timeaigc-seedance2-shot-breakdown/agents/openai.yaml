@@ -1,0 +1,4 @@
+interface:
+  display_name: "TimeAIGC_Seedance 2.0 镜头拆解"
+  short_description: "确认方案和资产后，逐片生成透视稳定、动作台词同步的分镜"
+  default_prompt: "使用 $timeaigc-seedance2-shot-breakdown 先拆解并确认剧本片段，再结合资产与全局风格，生成透视稳定、动作台词同步的逐片分镜。"
