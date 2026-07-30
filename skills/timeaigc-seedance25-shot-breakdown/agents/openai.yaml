@@ -1,0 +1,4 @@
+interface:
+  display_name: "TimeAIGC_Seedance 2.5 镜头拆解"
+  short_description: "确认30秒片段方案和资产后，逐片生成连续、可执行的电影分镜"
+  default_prompt: "使用 $timeaigc-seedance25-shot-breakdown 先规划并确认 Seedance 2.5 的30秒内剧情片段，再结合资产与全局风格逐片生成电影级分镜。"
