@@ -1,0 +1,4 @@
+interface:
+  display_name: "TimeAIGC_Seedance 2.5 打斗分镜"
+  short_description: "把打斗设计为30秒动作段落并拆成16个连续动态镜头"
+  default_prompt: "使用 $timeaigc-seedance25-fight-storyboard 把我的打斗设定设计成约30秒动作段落，并将选定段落拆成16个连续动态镜头。"
