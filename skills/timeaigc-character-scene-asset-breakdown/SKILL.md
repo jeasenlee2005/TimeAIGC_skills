@@ -113,4 +113,3 @@ description: 将中文漫剧、动态漫画、动画短剧、影视剧本、小�
 - 是否存在互斥画风、矛盾机位、未替换占位符或模型无法同时执行的要求。
 
 按 [references/output-spec.md](references/output-spec.md) 交付。不要附加与任务无关的寒暄、角色扮演称呼或伪造的“已生成图片”声明。
-
