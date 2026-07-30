@@ -1,0 +1,4 @@
+interface:
+  display_name: "TimeAIGC_创意剧本开发"
+  short_description: "将创意发展为结构完整、时长可执行的短视频与微短剧分场剧本"
+  default_prompt: "使用 $timeaigc-develop-screenplay，把我的创意发展为结构完整、时长可执行的剧本。"
