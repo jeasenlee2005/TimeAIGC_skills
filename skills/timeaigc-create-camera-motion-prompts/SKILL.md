@@ -114,4 +114,3 @@ python scripts/validate_motion_prompts.py <临时文件> --expected 3 --report
 - 是否出现固定镜头与机位运动并存、短时长内动作过载或焦点冲突；
 - 是否凭空添加对白、角色、道具、事件或不可见细节；
 - 代码块数量、编号、单段格式和中文表达是否正确。
-
