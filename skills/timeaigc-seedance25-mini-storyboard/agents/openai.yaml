@@ -1,0 +1,4 @@
+interface:
+  display_name: "TimeAIGC_Seedance2.5单片段迷你分镜"
+  short_description: "读取角色场景资产，将情节直接优化为5–30秒的完整单片段分镜脚本"
+  default_prompt: "使用 $timeaigc-seedance25-mini-storyboard 读取我的资产图，再根据我提供的情节和5–30秒时长生成完整分镜，保留构图、站位与自然表演。"
