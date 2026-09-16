@@ -16,20 +16,14 @@ SHOT_RE = re.compile(
     r"(?P<end>\d+(?:\.\d+)?)\s*秒\s*[：:]\s*(?P<body>.+?)\s*$"
 )
 CAMERA_RE = re.compile(r"^【镜头语言[：:].+?】")
-QUOTE_RE = re.compile(r"[“\"]([^”\"]*)[”\"]")
-SPEECH_PREFIX_RE = re.compile(r"【(?:对白|OS|旁白)(?:/OS)?】[^“”\"\n]{0,40}(?=[“\"])")
+QUOTE_RE = re.compile(r"“[^”]*”|‘[^’]*’|\"[^\"]*\"|'[^']*'")
+SPEECH_TAG_RE = re.compile(r"【(?:对白|OS|旁白)(?:/OS)?】")
 CJK_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff]")
+READABLE_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fffA-Za-z0-9]")
+SPEECH_END_RE = re.compile(r"声音连续至\s*(\d+(?:\.\d+)?)\s*秒")
+SPEECH_CONTINUITY_RE = re.compile(r"声音连续|声音继续|台词跨镜|对白跨镜|跨镜对白")
 REQUIRED_FIELDS = ("影调氛围", "出场角色", "所在场景")
 FORBIDDEN_FIELDS = ("影像风格",)
-POSITION_PATTERNS = {
-    "left": re.compile(r"画面左|左侧|左边|左上|左下"),
-    "right": re.compile(r"画面右|右侧|右边|右上|右下"),
-    "top": re.compile(r"画面上|上方|上部|顶部|左上|右上"),
-    "bottom": re.compile(r"画面下|下方|下部|底部|左下|右下"),
-    "center": re.compile(r"画面中央|画面中心|正中|中轴"),
-    "foreground": re.compile(r"前景"),
-    "background": re.compile(r"背景|后景"),
-}
 
 
 @dataclass
@@ -50,31 +44,40 @@ class Segment:
 
 
 def parse_segments(text: str) -> list[Segment]:
+    """Read standalone prompts or fenced prompts; keep multiline shot bodies."""
     segments: list[Segment] = []
     current: Segment | None = None
-
-    for line_no, line in enumerate(text.splitlines(), start=1):
+    lines = text.splitlines()
+    fenced = any(
+        re.search(r"^\s*#\s*片段", block, re.M)
+        for block in re.findall(r"```[^\n]*\n(.*?)```", text, re.S)
+    )
+    in_fence = False
+    for line_no, line in enumerate(lines, start=1):
+        if line.strip().startswith("```"):
+            in_fence = not in_fence
+            current = None
+            continue
+        if fenced and not in_fence:
+            continue
         heading = SEGMENT_RE.match(line)
         if heading:
             current = Segment(name=heading.group(1).strip(), line_no=line_no)
             segments.append(current)
             continue
-
+        if re.match(r"^\s*#{1,6}\s", line):
+            current = None
         if current is None:
             continue
-
         shot_match = SHOT_RE.match(line)
         if shot_match:
-            current.shots.append(
-                Shot(
-                    line_no=line_no,
-                    start=float(shot_match.group("start")),
-                    end=float(shot_match.group("end")),
-                    body=shot_match.group("body"),
-                )
-            )
+            current.shots.append(Shot(
+                line_no=line_no,
+                start=float(shot_match.group("start")),
+                end=float(shot_match.group("end")),
+                body=shot_match.group("body"),
+            ))
             continue
-
         if not current.shots:
             for required in REQUIRED_FIELDS:
                 if re.match(rf"^\s*{required}\s*[：:]", line):
@@ -82,44 +85,36 @@ def parse_segments(text: str) -> list[Segment]:
             for forbidden in FORBIDDEN_FIELDS:
                 if re.match(rf"^\s*{forbidden}\s*[：:]", line):
                     current.forbidden_fields.add(forbidden)
-
+        elif line.strip():
+            current.shots[-1].body += "\n" + line.strip()
     return segments
 
 
+def speech_spans(body: str) -> list[tuple[int, int, str]]:
+    """Only tagged quoted speech counts; labels and speaker prefixes are excluded."""
+    tags = list(SPEECH_TAG_RE.finditer(body))
+    result = []
+    for i, tag in enumerate(tags):
+        limit = tags[i + 1].start() if i + 1 < len(tags) else len(body)
+        quote = QUOTE_RE.search(body, tag.end(), limit)
+        if quote is not None:
+            result.append((tag.start(), quote.end(), quote.group()[1:-1]))
+    return result
+
+
+def visual_text(body: str) -> str:
+    for start, end, _ in reversed(speech_spans(body)):
+        body = body[:start] + body[end:]
+    return CAMERA_RE.sub("", body, count=1)
+
+
 def cjk_visual_count(body: str) -> int:
-    without_camera = CAMERA_RE.sub("", body, count=1)
-    without_speech_prefix = SPEECH_PREFIX_RE.sub("", without_camera)
-    without_spoken_words = QUOTE_RE.sub("", without_speech_prefix)
-    return len(CJK_RE.findall(without_spoken_words))
+    return len(CJK_RE.findall(visual_text(body)))
 
 
 def spoken_cjk_count(body: str) -> int:
-    return sum(len(CJK_RE.findall(match)) for match in QUOTE_RE.findall(body))
-
-
-def composition_problem(body: str) -> str | None:
-    positions = {name for name, pattern in POSITION_PATTERNS.items() if pattern.search(body)}
-
-    if re.search(r"(?<!非)对称构图", body):
-        horizontal = {"left", "right"} <= positions
-        vertical = {"top", "bottom"} <= positions
-        if not (horizontal or vertical):
-            return "对称构图必须写明左右两侧或上下区域的具体内容。"
-
-    if "三角构图" in body and len(positions) < 3:
-        return "三角构图必须写明至少三个视觉支点的位置。"
-
-    if "留白构图" in body:
-        has_space_material = re.search(r"暗墙|雾气|天空|走廊|空区|负空间|阴影|虚焦|环境", body)
-        if len(positions) < 2 or not has_space_material:
-            return "留白构图必须写明主体位置、留白区域及承载留白的环境内容。"
-
-    if "过肩" in body:
-        has_foreground_shoulder = re.search(r"前景.{0,16}(肩|肩背|轮廓)|(肩|肩背|轮廓).{0,16}前景", body)
-        if not has_foreground_shoulder or len(positions) < 2:
-            return "过肩镜头必须写明前景肩背位置、遮挡关系和焦点人物位置。"
-
-    return None
+    # Retain the helper name for callers; the documented count includes letters/digits.
+    return sum(len(READABLE_RE.findall(words)) for _, _, words in speech_spans(body))
 
 
 def validate(
@@ -128,7 +123,7 @@ def validate(
     preferred_max: float,
     hard_max: float,
     tolerance: float,
-    visual_min: int = 120,
+    visual_min: int = 0,
     visual_max: int = 180,
 ) -> tuple[list[str], list[str]]:
     errors: list[str] = []
@@ -170,35 +165,44 @@ def validate(
             if not CAMERA_RE.match(shot.body):
                 errors.append(f"{shot_label}没有以前置【镜头语言：…】开头。")
 
+            spans = speech_spans(shot.body)
+            if len(spans) != len(SPEECH_TAG_RE.findall(shot.body)):
+                errors.append(f"{shot_label}对白标签缺少配对引号原文；请检查格式。")
             visual_count = cjk_visual_count(shot.body)
-            if not visual_min <= visual_count <= visual_max:
-                errors.append(
-                    f"{shot_label}视觉执行描述约 {visual_count} 个中文字符；"
-                    f"应为 {visual_min}–{visual_max}。"
-                )
-
-            composition_issue = composition_problem(shot.body)
-            if composition_issue:
-                errors.append(f"{shot_label}{composition_issue}")
-            if "中心构图" in shot.body and not re.search(
-                r"仪式|秩序|压迫|正面对峙|对峙|孤立|喜剧|反差", shot.body
-            ):
+            if visual_count == 0:
+                errors.append(f"{shot_label}缺少视觉执行描述。")
+            elif visual_count < visual_min or visual_count > visual_max:
                 warnings.append(
-                    f"{shot_label}使用中心构图但未写明叙事理由；"
-                    "请确认是否应改为三分、非对称、留白或前景遮挡。"
+                    f"{shot_label}视觉描述约 {visual_count} 个中文字符；"
+                    f"参考范围 {visual_min}–{visual_max}，以信息完整和精炼为准，不凑字或删关键动作。"
                 )
 
             duration = shot.end - shot.start
             spoken_count = spoken_cjk_count(shot.body)
             estimated_speech = spoken_count * 0.3
-            if spoken_count == 0 and duration > 3 + tolerance:
+            narrative = visual_text(shot.body)
+            continuous = bool(SPEECH_CONTINUITY_RE.search(narrative))
+            endpoints = list(SPEECH_END_RE.finditer(narrative))
+            available = duration
+            if spoken_count and len(spans) == 1 and len(endpoints) == 1:
+                speech_end = float(endpoints[0].group(1))
+                if speech_end <= shot.start or speech_end > segment.shots[-1].end + tolerance:
+                    errors.append(f"{shot_label}声音连续结束时间超出本段可用范围。")
+                else:
+                    available = speech_end - shot.start
+            elif spoken_count and continuous:
                 warnings.append(
-                    f"{shot_label}无对白但时长 {duration:g} 秒；通常不应超过 3 秒。"
+                    f"{shot_label}含跨镜声音，需人工核对实际覆盖范围及各句顺序；不按单镜强判超时。"
                 )
-            if estimated_speech > duration + 0.5:
+                available = None
+            if spoken_count == 0 and not continuous and duration > 3 + tolerance:
+                warnings.append(
+                    f"{shot_label}未标记对白且时长 {duration:g} 秒；请核对是否有持续动作或情绪变化。"
+                )
+            if available is not None and estimated_speech > available + 0.5:
                 warnings.append(
                     f"{shot_label}对白基线约 {estimated_speech:.1f} 秒，"
-                    f"超过镜头时长 {duration:g} 秒。"
+                    f"超过可用声音时长 {available:g} 秒；请核对开口时刻、覆盖镜头和停顿。"
                 )
 
         segment_end = segment.shots[-1].end
@@ -247,8 +251,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--duration-min", type=float, default=27.0, help="标准片段最短秒数")
     parser.add_argument("--preferred-max", type=float, default=28.0, help="标准片段建议最长秒数")
     parser.add_argument("--hard-max", type=float, default=30.0, help="单条视频硬上限秒数")
-    parser.add_argument("--visual-min", type=int, default=120, help="单镜头视觉描述最少中文字符数")
-    parser.add_argument("--visual-max", type=int, default=180, help="单镜头视觉描述最多中文字符数")
+    parser.add_argument("--visual-min", type=int, default=0, help="视觉字数提醒下限；默认不设最低字数")
+    parser.add_argument("--visual-max", type=int, default=180, help="视觉字数提醒上限；超出只提示精简")
     parser.add_argument("--tolerance", type=float, default=0.05, help="时间比较容差")
     return parser
 
@@ -263,7 +267,7 @@ def main() -> int:
     ):
         print("ERROR: 时长范围无效。", file=sys.stderr)
         return 2
-    if args.visual_min <= 0 or args.visual_max < args.visual_min:
+    if args.visual_min < 0 or args.visual_max <= 0 or args.visual_max < args.visual_min:
         print("ERROR: 视觉描述字数范围无效。", file=sys.stderr)
         return 2
 
