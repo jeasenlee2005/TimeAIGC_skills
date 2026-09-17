@@ -69,7 +69,8 @@ def path_position(keys,t):
 def actor(a,collection):
     root=bpy.data.objects.new(a['id'],None);collection.objects.link(root)
     h=a['height'];rgb=a['color']
-    parts=[('torso','box',[0,0,h*.57],[h*.24,h*.16,h*.33]),('head','sphere',[0,0,h*.91],[h*.17]*3),('legL','cylinder',[-h*.065,0,h*.24],[h*.065,h*.065,h*.46]),('legR','cylinder',[h*.065,0,h*.24],[h*.065,h*.065,h*.46]),('armL','cylinder',[-h*.16,0,h*.57],[h*.055,h*.055,h*.34]),('armR','cylinder',[h*.16,0,h*.57],[h*.055,h*.055,h*.34])]
+    # Spatial occupancy only: no articulated limbs, gait, gestures or facial cues.
+    parts=[('occupancy','sphere',[0,0,h*.43],[h*.26,h*.19,h*.82]),('head','sphere',[0,0,h*.91],[h*.17]*3)]
     for name,kind,loc,size in parts:
         ob=primitive({'id':a['id']+'_'+name,'kind':kind,'location':loc,'size':size,'color':rgb},collection);ob.parent=root
     return root
