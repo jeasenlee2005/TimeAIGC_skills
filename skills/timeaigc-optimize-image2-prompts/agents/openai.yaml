@@ -1,0 +1,5 @@
+interface:
+  display_name: "TimeAIGC_image2提示词优化"
+  short_description: "结合官方GPT Image 2指南生成稳定首轮与保构图细化提示词"
+  default_prompt: "使用 $timeaigc-optimize-image2-prompts 参考官方 GPT Image 2 指南优化这段场景，并输出结构稳定的首轮提示与 Nano Banana Pro 保构图增强提示。"
+
