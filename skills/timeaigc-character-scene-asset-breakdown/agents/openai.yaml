@@ -1,4 +1,4 @@
 interface:
   display_name: "TimeAIGC_角色&场景资产拆解"
-  short_description: "生成角色近景与参考全身立绘、无人场景主图与网格补全的双语提示词"
-  default_prompt: "使用 $timeaigc-character-scene-asset-breakdown 拆解我的剧本，输出角色近景及参考近景的全身立绘、无人场景单视角主图及参考主图的2x2网格补全提示词，均附MJ英文版，并保留必要状态修改，保存为Markdown文件。"
+  short_description: "保留角色场景常规提示词，可选从主图制作三维空场景、补充四视图及交接资产包"
+  default_prompt: "使用 $timeaigc-character-scene-asset-breakdown 拆解我的剧本，按原方式交付角色与场景双语提示词并保存项目索引；完成后提供可选的主图三维场景与四视图扩展，不自动建模。"
