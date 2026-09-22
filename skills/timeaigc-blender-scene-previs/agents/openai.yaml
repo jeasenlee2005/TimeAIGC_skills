@@ -1,4 +1,4 @@
 interface:
-  display_name: "TimeAIGC_Blender场景与镜头预演"
-  short_description: "从剧本搭建统一空间简模，生成场景四视图、镜头预演与即梦视频参考"
-  default_prompt: "使用 $timeaigc-blender-scene-previs，把我的剧本和分镜转成可编辑的Blender场景、四机位构图与镜头预演，再按授权验证即梦视频。"
+  display_name: "TimeAIGC_Blender动态预演"
+  short_description: "读取已确认场景与定稿分镜，制作动态预演、完整生成提示词和素材上传清单"
+  default_prompt: "使用 $timeaigc-blender-scene-previs 读取本项目指定片段的定稿和已确认场景，保留镜头结构制作动态预演，交付视频、完整生成提示词及上传清单，由我自行生成。"

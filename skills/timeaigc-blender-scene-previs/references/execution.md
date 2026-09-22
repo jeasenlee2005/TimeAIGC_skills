@@ -10,6 +10,15 @@
 
 ## 命令顺序
 
+当前默认读取资产Skill交付的无人场景，先按project-handoff.md校验清单与哈希。将scene-spec复制为本段预演数据，只添加clips，不擅改objects/views；模型与数据不符时先适配或退回资产修订，不用旧数据重建覆盖模型。
+
+```text
+blender --background --factory-startup --python-exit-code 1 --python <skill>/scripts/build_scene.py -- --scene-blend <asset>/model/scene.blend --spec <preview-spec.json> --out <new-preview-directory> --render clips
+python <skill>/scripts/package_previews.py <new-preview-directory>
+```
+
+`--scene-blend`打开已有模型，不重建objects；在新目录生成预演并记录源文件哈希，不修改原文件。先检查源模型集合、单位、相机、隐藏状态及动画。碰撞采样以匹配的spec为依据，不证明任意导入网格无碰撞。复杂运镜用项目适配器。以下无`--scene-blend`命令仅保留旧项目/样例兼容，不是当前场景制作入口。
+
 1. 复制 `assets/example-scene.json` 到项目，或创建符合契约的新数据。
 2. `python scripts/scene_spec.py <spec> --floorplan <project>/floorplan.svg`：验证输入并出平面图。
 3. `blender --background --factory-startup --python-exit-code 1 --python <skill>/scripts/build_scene.py -- --spec <spec> --out <project>/render-v1 --render all`。
@@ -17,7 +26,7 @@
 
 `--render views` 只渲染四机位；`--render clips` 只渲染镜头；`--render none` 只建文件；`--clip short5` 选一段。即便不渲染片段也会生成选定片段的可编辑预演文件。`--out`用未使用的新目录，拒绝覆盖任何非空目录（包括中断后不完整输出）。
 
-脚本重建环境，所以不把既有用户 `.blend` 作为启动文件；只在新后台进程工作。`--factory-startup`避免用户插件干扰，`--python-exit-code 1`让脚本异常明确返回失败。Blender后台输出可能提示插件不能起服务，这不代表渲染失败；检查进程退出码与产物。
+只有无`--scene-blend`的旧模式会重建环境，不能用它处理既有模型；当前模式显式传入资产模型，且只在新后台进程工作。`--factory-startup`避免用户插件干扰，`--python-exit-code 1`让脚本异常明确返回失败。Blender后台输出可能提示插件不能起服务，这不代表渲染失败；检查进程退出码与产物。
 
 ## 产物
 

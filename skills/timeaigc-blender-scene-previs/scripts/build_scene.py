@@ -99,7 +99,7 @@ def geometry_checks(d,clip):
 
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument('--spec',required=True);p.add_argument('--out',required=True);p.add_argument('--clip');p.add_argument('--render',choices=['views','clips','all','none'],default='all');p.add_argument('--engine',choices=['BLENDER_WORKBENCH'],default='BLENDER_WORKBENCH');p.add_argument('--allow-warnings',action='store_true');a=p.parse_args(sys.argv[sys.argv.index('--')+1:])
+    p=argparse.ArgumentParser();p.add_argument('--spec',required=True);p.add_argument('--out',required=True);p.add_argument('--scene-blend');p.add_argument('--clip');p.add_argument('--render',choices=['views','clips','all','none'],default='all');p.add_argument('--engine',choices=['BLENDER_WORKBENCH'],default='BLENDER_WORKBENCH');p.add_argument('--allow-warnings',action='store_true');a=p.parse_args(sys.argv[sys.argv.index('--')+1:])
     d=read_spec(a.spec);out=Path(a.out).resolve()
     if out.exists() and any(out.iterdir()): raise ValueError('Output is not empty: choose a new version directory')
     out.mkdir(parents=True,exist_ok=True)
@@ -107,17 +107,31 @@ def main():
     if a.clip and not selected: raise ValueError('Unknown clip')
     warnings={c['id']:geometry_checks(d,c) for c in selected}
     if any(warnings.values()) and not a.allow_warnings: raise ValueError(json.dumps(warnings,ensure_ascii=False))
-    bpy.ops.wm.read_factory_settings(use_empty=True)
-    scene=bpy.context.scene;scene.world=bpy.data.worlds.new('world');scene.unit_settings.system='METRIC';scene.unit_settings.scale_length=1
-    env=bpy.data.collections.new('ENVIRONMENT');scene.collection.children.link(env)
-    cams=bpy.data.collections.new('CAMERAS');scene.collection.children.link(cams)
-    for o in d['objects']: primitive(o,env)
-    for v in d['views']: camera(v['id'],v,cams)
+    if a.scene_blend:
+        source=Path(a.scene_blend).resolve()
+        if not source.is_file(): raise ValueError('Source scene missing')
+        bpy.ops.wm.open_mainfile(filepath=str(source))
+        scene=bpy.context.scene
+        if scene.get('timeaigc_scene_id') and scene['timeaigc_scene_id']!=d['scene_id']: raise ValueError('Source scene ID differs from preview spec')
+        if abs(scene.unit_settings.scale_length-1)>1e-6: raise ValueError('Adapt source units explicitly before preview')
+        if not scene.world: scene.world=bpy.data.worlds.new('world')
+        cams=bpy.data.collections.new('PREVIS_CAMERAS');scene.collection.children.link(cams)
+        if a.render=='views': raise ValueError('Static views belong to the asset skill')
+        if any(x['id'] in bpy.data.objects for clip in selected for x in clip.get('actors',[])):
+            raise ValueError('Actor ID collides with source scene object; choose unique IDs')
+    else:
+        print('LEGACY rebuild mode: current workflow should use --scene-blend with an approved asset scene')
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        scene=bpy.context.scene;scene.world=bpy.data.worlds.new('world');scene.unit_settings.system='METRIC';scene.unit_settings.scale_length=1
+        env=bpy.data.collections.new('ENVIRONMENT');scene.collection.children.link(env)
+        cams=bpy.data.collections.new('CAMERAS');scene.collection.children.link(cams)
+        for o in d['objects']: primitive(o,env)
+        for v in d['views']: camera(v['id'],v,cams)
     render_setup(scene,960,540,a.engine)
-    scene.camera=bpy.data.objects[d['views'][0]['id']]
+    if not a.scene_blend: scene.camera=bpy.data.objects[d['views'][0]['id']]
     floorplan(d,out/'floorplan.svg')
     bpy.ops.wm.save_as_mainfile(filepath=str(out/'scene.blend'))
-    if a.render in ('views','all'):
+    if not a.scene_blend and a.render in ('views','all'):
         (out/'views').mkdir(exist_ok=True)
         for v in d['views']:
             scene.camera=bpy.data.objects[v['id']];scene.render.filepath=str(out/'views'/f"{v['id']}.png");bpy.ops.render.render(write_still=True)
@@ -152,6 +166,9 @@ def main():
         for ob in clipcams.values(): bpy.data.objects.remove(ob,do_unlink=True)
         scene.timeline_markers.clear()
     manifest={'scene_id':d['scene_id'],'spec_sha256':hashlib.sha256(Path(a.spec).read_bytes()).hexdigest(),'blender':bpy.app.version_string,'clips':[{'id':c['id'],'fps':c.get('fps',12),'duration':c['duration']} for c in selected],'warnings':warnings,'empty_scene':'scene.blend','coordinate_system':'meters, Z-up, +Y north','limitations':['proxy actors do not validate hand contact, facial acting, dialogue or photorealism','sampled collisions are conservative; inspect rendered occlusion and motion']}
+    if a.scene_blend:
+        manifest['source_blend']=str(source)
+        manifest['source_blend_sha256']=hashlib.sha256(source.read_bytes()).hexdigest()
     (out/'manifest.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2),encoding='utf-8')
 
 
