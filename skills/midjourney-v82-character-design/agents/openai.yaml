@@ -1,0 +1,4 @@
+interface:
+  display_name: "MJ V8.2 角色设计"
+  short_description: "先定脸再做全身立绘，每条英文提示词不超过1024字符，附中文翻译"
+  default_prompt: "使用 $midjourney-v82-character-design，根据我的人物描述先制作3:4头脸特写提示词，确认并提供定稿图后再制作9:16全身立绘；每条英文不超过1024字符，并附中文翻译。"
