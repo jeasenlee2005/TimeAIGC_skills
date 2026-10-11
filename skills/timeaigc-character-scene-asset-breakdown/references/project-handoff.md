@@ -54,4 +54,4 @@ NN_影像制作/
 
 运行 `python scripts/validate_handoff.py --root <项目根目录> --manifest <scene-manifest.json>`。校验器检查路径、文件指纹和声明完整性，不判断图像空间质量；仍需目视和Blender检查。
 
-验证成功后将清单相对路径加入project.json，给用户主图、四视图、模型和索引的实际链接。仅常规提示词路径不用伪建scene-manifest；索引中保留documents及无模型场景条目即可。
+验证成功后将清单相对路径加入project.json，在最终回复中按 [空间场景制作](spatial-scene.md) 的交付规则直接展示该版本已有的平面图、Blender建模预览及四视图，再给用户主图、模型、单图和索引的实际链接；链接和索引不能替代图片展示。仅常规提示词路径不用伪建scene-manifest，也不要求生成或展示尚不存在的场景图片；索引中保留documents及无模型场景条目即可。
