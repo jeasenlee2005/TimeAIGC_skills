@@ -1,4 +1,4 @@
 interface:
   display_name: "TimeAIGC_角色&场景资产拆解"
-  short_description: "独立生成角色近景与换装全身提示词，可选制作并展示场景平面图、三维预览和四视图"
-  default_prompt: "使用 $timeaigc-character-scene-asset-breakdown 拆解我的剧本，分别交付独立角色近景、全身与换装及场景双语提示词，保存Markdown和项目索引；完成后提供可选三维场景扩展，执行后展示平面图、建模预览和四视图，不自动建模。"
+  short_description: "生成角色基础近景、头部变体与独立换装全身提示词，可选展示场景平面图、三维预览和四视图"
+  default_prompt: "使用 $timeaigc-character-scene-asset-breakdown 拆解我的剧本，交付角色基础近景、必要头部变体编辑、独立全身与换装及场景双语提示词，保存Markdown和项目索引；完成后提供可选三维场景扩展，执行后展示平面图、建模预览和四视图，不自动建模。"
