@@ -1,0 +1,22 @@
+{
+  "schema": "timeaigc-blend-asset/v1",
+  "collection": "BEAST_STATIC",
+  "root_object": "root",
+  "meters_per_unit": 1.0,
+  "forward_axis": "-Y",
+  "up_axis": "+Z",
+  "tolerance_m": 0.0001,
+  "shape_kind": "quadruped",
+  "ground_objects": ["body"],
+  "body_objects": ["body"],
+  "head_objects": ["head"],
+  "front_marker_objects": ["nose"],
+  "color_objects": ["body", "head"],
+  "measurement_rules": {
+    "shoulder_height": {"objects": ["body"], "axis": "z", "mode": "max"},
+    "head_top_height": {"objects": ["head"], "axis": "z", "mode": "max"},
+    "body_length": {"objects": ["body"], "axis": "y", "mode": "extent"},
+    "body_width": {"objects": ["body"], "axis": "x", "mode": "extent"}
+  },
+  "notes": "Structure example only. Replace collection and stable object IDs using the actual reviewed model; no dimensions or user confirmation are implied. Finalize with inspect_blend_asset.py before registration."
+}

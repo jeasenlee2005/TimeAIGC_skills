@@ -1,42 +1,62 @@
-# 读取场景资产，保存动态预演
+# 项目接入与版本接续
 
-## 新对话的入口
+## 新任务先读项目文件
 
-从用户指定项目或当前目录向上查 `.timeaigc/project.json` 与 `影像项目索引.md`。JSON是路径/版本事实来源；不同对话不共享可靠记忆，也不能把同名项目当作已同步文件。只能访问当前实际文件，找不到时索取索引或场景交接包，不让用户重复粘贴已在项目中的剧本和提示词。
+从用户指定项目或当前目录向上查找 `.timeaigc/project.json`，同时读取现有 `AGENTS.md` 与项目索引说明。JSON 中的相对路径、状态、版本和确认来源是接续入口；文件必须在本机存在。不要用聊天记忆补确认、以修改时间猜采用版本，或把同名文件当作同一资产。
 
-项目索引schema_version为1，含production_root、documents、scenes、previews。路径相对项目根目录，使用`/`；不依赖用户机器盘符。documents可登记script、asset_prompts、segments、storyboards路径列表。通过用户片段ID找实际定稿，不以最新修改时间擅自猜版本。
+v2.2 为既有 `schema_version:1` 项目索引增加 `project_id`、`character_registry:{path:".timeaigc/character-registry.json"}` 与 `active_scene_id`；原有 `production_root`、`documents`、`scenes`、`previews` 和自定义字段保留。所有项目路径相对项目根，以 `/` 分隔。角色登记 schema 独立，不把项目索引整体改成预演参考清单。
 
-scenes以稳定场景ID为键，每项含name、state、active_version和versions；versions映射版本名到scene-manifest.json路径。active_version为空意味着未选择可用模型，不自动建模；多个状态/版本有歧义时只确认该项。用户直接指定旧版时记录其选择并先复核，不静默切回当前版。
+项目中尚无角色入口时，先读取完整资料和既有确认记录，再合并新字段。可参考 [角色登记](character-registry.md) 与 [项目入口模板](../assets/templates/project-entry-AGENTS.md)。向现有 `AGENTS.md` 添加独立标记块，保留块外原文；没有用户授权时不修改技能安装位置或其他项目说明。写入前重读，使用临时文件与原子替换；并发变化先合并，不整份覆盖。
 
-## 场景包检查
+## 资料优先级与项目清点
 
-scene-manifest.json为`{schema_version:1,kind:"scene",scene_id,version,name,state,geometry_status,appearance_status,review,files,views}`。files的每个值都是`{path,sha256}`，应含blend、scene_spec、floorplan以及实际已完成的主图、提示词等；views为V01–V04，包含camera_id、gray引用、appearance引用或null，V01为main_view。
+1. 在索引 `documents.segments` 等已登记位置找**已确认的第一阶段完整项目片段总表**，核验真实内容、范围与哈希。必须覆盖全项目，不能把选中片段包装成完整总表。
+2. 没有合格总表时，查 `documents.script` 等位置的**完整剧本**。剧本完整来源和角色清点应有可追溯记录。
+3. 两者都没有时，只提出材料缺项，请用户提供完整总表或完整剧本并等待；不得继续推断全项目角色或为正式项目填工程默认身高。
 
-geometry_status必须ready，review必须有实际审查依据。appearance_status为partial不阻止本地预演，但必须明确生成素材尚缺；不能假装成品四视图已经完成。匹配剧本状态、米制坐标、原点、人物预期身高、相机传感器和空间边界。查看实际模型与必要图片，不仅信任清单。
+完整阅读采用来源，核对登记中的稳定角色 ID、别名及形态；保存覆盖全项目的角色清点依据。脚本校验来源、哈希和登记，不自动证明自然语言文本中所有人物已被识别。新增角色、变身或清点遗漏先补登记；首次批量问缺少的模型选择和尺寸，此后只问缺失、新增、冲突。有效确认直接复用，换参考图不重问身高。
 
-运行 `python scripts/validate_handoff.py --root <项目根> --manifest <scene-manifest.json>`，检查真实文件和指纹。不一致先定位源改动并复核，不能直接刷新哈希“让校验通过”。本地检查不证明外部视频生成准确。
+角色尺度是项目固有资料；每镜姿态、位置、朝向留在片段数据。全项目登记可以包含许多角色，实际 `actors` 只引用本次出场者。不得为了“全项目确认”把所有角色载入每个镜头。
 
-没有规范清单但用户有旧.blend时，不重建：检查无人模型、单位、布局和实际文件，按同一schema建立最小交接清单并登记；主图/四视图缺失不伪造complete。模型本身缺失、需要补空间或重做美术时，交回角色场景资产Skill处理，明确已有输入及缺项；未安装该Skill不假装调用。
+新建或整理过的非人模型保存为项目内独立 `.blend` 资产版本，按 [本地模型复用](local-blend-models.md) 生成实测契约，再将模型相对路径、文件哈希、版本、精确集合及契约路径/哈希写入角色形态。未来任务读取该记录就能加载同一集合的实际网格；仅保存预演 `previs.blend` 或模型图片不等于已完成可复用角色登记。有效记录无需用户重复提供路径、模型选择或尺寸；检查失败只处理对应差异。
 
-## 创建预演版本
+## 场景包及实际单位
 
-在索引production_root下创建 `previews/<片段ID>/vNNN/`，源场景只读。保留源分镜原文和哈希、原片段时间范围、场景版本及场景清单哈希。全片局部时间0对应原source_range起点；镜头数与一镜到底属性沿用定稿。
+`scenes` 仍以稳定场景 ID 为键，每项含 `name`、`state`、`active_version`、`versions`；版本值指向场景清单，可为相对路径字符串或 `{manifest:相对路径}`。未选采用版本时先处理缺项。当前 v2.2 适配器只接受索引 active_version：用户明确选择历史版本时，先按授权登记采用版本并复核，不用 `--scene-blend` 指向另一个文件来绕过索引。
 
-写入preview-manifest.json：
+v2.2 的 `scene_binding.py` 对采用版本做强绑定：场景清单须有匹配的 `id`、`version`、`state:"confirmed"|"approved"` 和 `files.scene:{path,sha256}`。该 `path` 相对场景清单所在目录；索引中的 manifest 路径则相对项目根。实际 `.blend` 哈希、所选 `--scene-blend` 规范路径都必须匹配。绑定保存场景与清单的路径、版本和哈希，后续校验对照当前索引；变化后的旧预演不能继续冒充当前结果。以下旧交接 schema 字段可以保留，但只写旧 `files.blend` 或 `geometry_status:ready` 不满足新增适配器。
 
-- `schema_version:1, kind:"previs", clip_id, version, scene_id, scene_version`。
-- `scene_manifest:{path,sha256}` 与 `storyboard:{path,sha256}`；均项目根相对路径。
-- `source_range:[原起点,原终点]`、duration、shot_count、one_take（布尔）；一镜到底shot_count为1，不能为适配平台改切镜。
-- `status:"draft|ready|needs_review"`、`review:{by:"user|agent|unreviewed",basis}`。
-- `files`：blend、video、prompt、upload_list及可选mapping，每项`{path,sha256}`。ready要求前四项齐全且已实际审查。
-- 上传清单逐项列素材编号、路径、人物/场景对应、职责、时间范围；编号与完整提示词一致。未生成视频时不填任务成功。
+场景清单沿用 `schema_version:1,kind:"scene"`、场景 ID/版本/状态、`geometry_status`、`appearance_status`、`review`、`files`、`views`。文件记录为 `{path,sha256}`，视图按已有实际资产登记。可执行：
 
-保存原分镜、机位/整体走位映射，导出干净MP4和内部审查图。完整生成提示词保留原标题、时长、影调、角色、场景、全部镜头、表演、对白和声音；空间修订需要可追溯，不能删剧情换成“照视频动”。默认不附额外时间参考图。
+```text
+python <skill>/scripts/validate_handoff.py --root <project-root> --manifest <scene-manifest.json>
+```
 
-验证preview-manifest后，将相对路径追加至project.json的previews条目，再更新影像项目索引.md。索引更新前重读、合并、原子替换，保留其他对话的已有条目；并发冲突不得整份覆盖。源场景/分镜内容或active_version改变会触发重新审查，旧预演保留历史身份，不自动用于新版生成。
+无人模型几何须可用，并有实际审查依据；外观图尚缺时如实保留 partial，不伪造完成。已有 `.blend` 缺规范清单时检查后建立最小清单，不重建场景。模型缺失或需改美术时交回资产流程。
 
-校验器对active_version变化采用保守拒绝；用户明确选择旧版时，可在新预演记录增加historical_scene_review:{by:"user",basis:"用户选择与复核依据"}，允许固定旧版但仍检查所有原文件哈希。不得伪造用户选择、改主项目采用版本或篡改旧哈希来绕过检查。
+除文件哈希外，v2.2 还需登记当前场景的 `meters_per_blender_unit` 和已知尺寸校准对象。Blender 中按对象世界矩阵实测范围再乘单位换算，须匹配登记米值，且与场景设置一致。单位为厘米的真实几何可保留在原单位：只把输入米值一次换算为场景单位，不能把整个源场景重复缩放。未知或冲突时索取尺度依据；见 [角色与单位](character-registry.md)。
 
-## 用户交付
+## 新建预演，不改历史
 
-默认给预演视频、完整提示词、素材清单以及简短通过/偏差说明，附索引入口。将模型和资产查找藏在流程内部，不要求用户记固定调用话术或填写技术字段。用户自行生成时停在材料交付，不擅自提交付费任务。
+在 `production_root/previews/<clip_id>/vNNN/` 新目录制作预演。源场景只读，保留原分镜及哈希、原时间范围、所选场景版本/清单哈希，以及角色登记快照和实际构建记录。局部时间 0 对应原 `source_range` 起点；一镜到底不增加剪切。
+
+两个清单负责不同范围，不能互相冒充：
+
+| 清单 | 用途 |
+| --- | --- |
+| 项目交接 `schema_version:1,kind:"previs"` | 场景版本、原分镜、片段范围、产物路径、审查状态与项目索引 |
+| v2.2 参考 `schema_version:3` | 干净/观看视频、全文及模式绑定、角色快照、当前项目角色与尺度检查 |
+
+项目交接清单继续包含 `clip_id/version/scene_id/scene_version`、`scene_manifest`、`storyboard`、`source_range`、`duration`、`shot_count`、`one_take`、`status`、`review` 和 `files`。其中 `files.video` 只能指干净视频；说明视频另列。还应登记当前参考清单路径，便于后续加载完整保护；不靠 v1 校验器代替 v2.2 角色检查。
+
+v2.2 参考清单将 `registry_binding:{path:"registry-binding.json",sha256}` 绑定到视频。绑定携带登记快照及本片实际使用的角色/形态指纹、来源与场景尺度；使用已有模型的形态还保存已验证的契约快照。它不是“曾经通过就永远有效”的凭证。导出到项目外时仍需显式指定当前项目根，便于检查当前登记和文件。完整命令见 [本地执行](execution.md)。
+
+修改身高、关键尺寸、突出物、颜色、模型版本或模型字节，须把依赖相应角色/形态的预演标为过期；修改无关角色不应使本片过期。来源或场景尺度变化也需重新复核。新结果写新版本，旧视频、旧快照、旧清单和旧哈希保持历史事实，不通过刷新哈希让旧画面变“当前”。
+
+同内容资产改名、相对路径更新、项目整体移动或参考图替换，不等于尺寸变化。更新当前路径后核对内容哈希与固有尺寸，保留原确认来源。已有模型实测与登记冲突时只问冲突项，不能默默调到期望数值。
+
+## 合并索引与用户交付
+
+验证完成后，将新预演的路径、版本和当前状态合并到 `project.json.previews`，再同步已有中文索引。更新前重读并保留其他条目与自定义字段。标记过期只更新当前项目的依赖状态，不改旧清单内部的历史记录。
+
+交付干净视频、说明视频、完整提示词、白名单、登记/尺度依据和简短验收结论，并给项目入口。用户不必手填技术字段或重复粘贴项目内已有资料。实际生成需单独遵循已有授权；本地工程测试或生成上传列表不代表付费任务已提交。

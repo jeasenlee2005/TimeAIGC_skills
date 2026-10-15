@@ -4,6 +4,8 @@ import html
 import json
 import math
 from pathlib import Path
+from proxy_contract import resolve_actor_requests
+from generation_prompt import validate_storyboard
 
 
 def read_spec(path):
@@ -53,6 +55,9 @@ def validate(d):
         require(clip.get('id') and all(c.isalnum() or c in '_-' for c in clip['id']), 'Unsafe clip id')
         require(clip['id'] not in clip_ids, 'Duplicate clip ID')
         clip_ids.add(clip['id'])
+        # Each clip owns its complete source context. Never substitute an outer
+        # scene string or concatenate shot excerpts at render time.
+        validate_storyboard(clip)
         duration = clip['duration']
         require(isinstance(duration, (int, float)) and math.isfinite(duration) and duration > 0, 'Invalid duration')
         fps = clip.get('fps', 12)
@@ -67,15 +72,19 @@ def validate(d):
             require(all(abs(t*fps-round(t*fps)) < 1e-6 for t in (s['start'],s['end'])), 'Shot cuts must align with frames')
             camera(s['camera_start'])
             camera(s.get('camera_end', s['camera_start']))
-            require(bool(s.get('source_text')), 'Preserve source_text for every shot')
+            require(isinstance(s.get('source_text'), str) and bool(s['source_text'].strip()), 'Preserve complete source_text for every shot')
+            require(isinstance(s.get('dialogue',''), str) and s.get('dialogue','') in s['source_text'], 'source_text must contain dialogue verbatim')
             cursor = s['end']
         require(abs(cursor-duration) < 1e-6, 'Shots must cover clip duration')
         actor_ids=set()
+        if clip.get('actors'):
+            resolve_actor_requests({**d, **clip}, for_clean=True)
         for a in clip.get('actors', []):
             require(a['id'] not in actor_ids and a['id'] not in ids, 'Duplicate actor ID')
             actor_ids.add(a['id'])
-            require(0.2 <= a['height'] <= 3, 'Invalid actor height')
+            require(a.get('proxy_mode') in ('shape_proxy', 'existing_model') or 0.05 <= a.get('height',a.get('height_m',0)) <= 100, 'Canonical human height must be .05..100 m')
             vec(a['color'],3,'actor RGB')
+            require(all(0<=x<=1 for x in a['color']), 'Actor RGB outside 0..1')
             keys=a['keys']
             require(len(keys)>=2 and keys[0]['time']==0 and keys[-1]['time']==duration, 'Actor keys must cover entire clip')
             last=-1
@@ -83,6 +92,7 @@ def validate(d):
                 require(last < k['time'] <= duration, 'Actor keys must increase')
                 last=k['time']
                 vec(k['position'],3,'actor xyz at feet')
+                require(isinstance(k.get('yaw_degrees',0),(int,float)) and math.isfinite(k.get('yaw_degrees',0)), 'Invalid yaw')
     return True
 
 

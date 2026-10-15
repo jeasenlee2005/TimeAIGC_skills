@@ -19,17 +19,21 @@
   "ratio":"16:9",
   "review":{"accepted":true,"reviewer":"user","basis":"用户已查看并确认本版预演；填实际记录"},
   "images":[{"path":"appearance/V01.png","role":"scene_appearance"}],
-  "videos":[{"path":"render-v1/short5/previs.mp4","role":"camera_and_blocking"}],
-  "prompt":"填写当前场景、时间轴与参考职责的完整生成提示词"
+  "videos":[{"path":"render-current/short5/clean.mp4","role":"camera_and_blocking"}],
+  "prompt":"逐字填入当前参考清单所绑定的generation-prompt.txt全文；本行只是占位示例"
 }
 ```
-此为字段示例，执行前必须填写真实审查记录和提示词。无人值守授权下用`reviewer:agent`和真实依据；`accepted`只是审查记录，不授予新的付费权限。`images/videos/audios`都可为空但至少有图或视频。视频时长由ffprobe确认；`camera_and_blocking`角色要求与目标片长一致，其他参考片段按其用途检查。
+此为字段示例，执行前必须填写真实审查记录，并逐字使用当前清单绑定的生成提示词，不能拿本例占位文字运行。无人值守授权下用`reviewer:agent`和真实依据；`accepted`只是审查记录，不授予新的付费权限。`images/videos/audios`都可为空但至少有图或视频。视频时长由ffprobe确认；`camera_and_blocking`角色要求与目标片长一致，其他参考片段按其用途检查。
+
+当前prepare/submit要求v2参考清单具备完整 `proxy_reference`，把clean视频、源spec/分镜全文、实际演员模式/颜色记录、模式契约、提示词及覆盖报告绑定。请求 `prompt` 必须逐字等于已绑定提示词，并在submit前重验。历史仅含视频哈希的清单只可用 `reference_guard.py --legacy-inspect` 只读查看，不能上传。默认圆柱无手脚，浅色前条只表示方向；特殊分节模式需明确选择、`allow_special_proxy:true`和理由，`closeup_static`始终不进入clean。具体契约见[scene-contract.md](scene-contract.md)。
+
+本轮仅验证本地管线和保护，没有付费服务验证；即使提示词明确禁止模仿圆柱、无肢体、僵直、滑行和符号，也不能保证生成模型不受这些内容影响。
 
 ## 使用脚本
 
 ```text
-python scripts/dreamina_job.py prepare request.json --receipt prepared.json
-python scripts/dreamina_job.py submit request.json --receipt submitted.json
+python scripts/dreamina_job.py prepare request.json --receipt prepared.json --reference-manifest preview-manifest.json
+python scripts/dreamina_job.py submit request.json --receipt submitted.json --reference-manifest preview-manifest.json
 python scripts/dreamina_job.py query request.json --receipt submitted.json --download-dir result
 ```
 

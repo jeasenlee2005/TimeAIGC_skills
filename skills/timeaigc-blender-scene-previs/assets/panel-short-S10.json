@@ -1,0 +1,80 @@
+{
+  "schema_version": 2,
+  "title": "固定圆柱人物代理 2.0：干净参考与完整分镜说明验证",
+  "fixture_only": true,
+  "width": 960,
+  "height": 540,
+  "fps": 12,
+  "frame_count": 36,
+  "coordinate_system": {
+    "units": "meters",
+    "up": "+Z",
+    "forward": "-Y",
+    "root": "floor below cylinder center"
+  },
+  "shots": [
+    {
+      "id": "S10",
+      "start_frame": 0,
+      "end_frame": 36,
+      "summary": "人物停稳，保持侧向站位。",
+      "dialogue": "",
+      "source_text": "【S10】3秒短文本无对白排版回归。\n构图：侧面全身，保留头顶和地面空间。\n机位：固定。\n站位：甲位于中心。\n动作：人物停稳，不进行代理肢体表演。\n手势：自然静置，圆柱不模拟手势。\n表情：平静，预演不模拟表情。\n声音：环境声，无对白。",
+      "source_text_sha256": "261b018bad544c7ace8c33ba69a08d75139e9863af330662280f5442e9dab53f",
+      "dialogue_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "visual_case": "side"
+    }
+  ],
+  "proxy_mode": "cylinder",
+  "allow_special_proxy": false,
+  "special_proxy_reason": "",
+  "actors": [
+    {
+      "id": "actor_A",
+      "character_name": "甲",
+      "color_name": "蓝色",
+      "height": 1.76,
+      "color": [
+        0.12,
+        0.43,
+        0.72
+      ],
+      "proxy_mode": "cylinder",
+      "hand_lod": "none"
+    },
+    {
+      "id": "actor_B",
+      "character_name": "乙",
+      "color_name": "橙色",
+      "height": 1.76,
+      "color": [
+        0.9,
+        0.29,
+        0.09
+      ],
+      "proxy_mode": "cylinder",
+      "hand_lod": "none"
+    },
+    {
+      "id": "actor_C",
+      "character_name": "丙",
+      "color_name": "绿色",
+      "height": 1.76,
+      "color": [
+        0.2,
+        0.68,
+        0.38
+      ],
+      "proxy_mode": "cylinder",
+      "hand_lod": "none"
+    }
+  ],
+  "provenance": {
+    "source_fixture": "neutral-demo-readable-v2.json",
+    "source_fixture_sha256": "202bd49aa9b67366c10a6e57d8ee213b8a3a604ce5e998bd71ccd9b194675f77",
+    "timeline_and_dialogue_unchanged": true,
+    "storyboard_status": "explicit synthetic test fixture; newly authored performance instructions, not a user-confirmed production screenplay"
+  },
+  "storyboard_text": "S10紧凑面板合成回归测试；只验证短说明与无对白的排版。\n\n【S10】3秒短文本无对白排版回归。\n构图：侧面全身，保留头顶和地面空间。\n机位：固定。\n站位：甲位于中心。\n动作：人物停稳，不进行代理肢体表演。\n手势：自然静置，圆柱不模拟手势。\n表情：平静，预演不模拟表情。\n声音：环境声，无对白。",
+  "storyboard_sha256": "a016ac109056de7f23b1765edcb0f189e7667f2268000e36fb723eb2d2e29dc9"
+}
